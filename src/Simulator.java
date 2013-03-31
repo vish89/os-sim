@@ -4,12 +4,12 @@ import java.util.PriorityQueue;
 
 /**
  *
- * 
+ * @author oabahuss && fredQin
  */
 public class Simulator {
     //Fixed params during simulation
     private ArrayList<Process> processesList;
-    private ArrayList<InstructionMemory> instructionMemory;
+    private InstructionMemory[] instructionMemory;
     private ArrayList<IOChannel> ioList;
     private ArrayList<DataMemory> dataMemory;
     private CPU cpu;
@@ -35,11 +35,15 @@ public class Simulator {
         this.schedulingPolicy = schedulingPolicy;
         this.processesList = new ArrayList();
         this.dataMemory  = new ArrayList();
-        this.instructionMemory = new ArrayList();
         this.textLog = new ArrayList();
         this.ioList = new ArrayList();
         this.readyProcesses = new PriorityQueue();
-        this.cpu = new CPU();
+        this.cpu = new CPU(this);
+        
+        this.instructionMemory = new InstructionMemory[1000];
+        for (int i=0; i<1000; i++){
+            this.instructionMemory[i] = new InstructionMemory();
+        }
         
         StringBuilder sb = new StringBuilder();
         sb.append(0);
@@ -52,11 +56,14 @@ public class Simulator {
     }
 
     /**
-     * A method that steps the simulation clock up to the param clock.
+     * A method that steps the simulation clock up to the parameter clock.
      * @param clock the time you want to jump the simulation to.
      */
     private void jumpClock(int clock) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        int i = clock;
+        while(i>=0){
+            this.incrementClock();
+        }
     }
 
     /**
@@ -80,7 +87,7 @@ public class Simulator {
             for (int j=0; j<this.dataMemory.size();j++){
                 this.unlockDataMemory(pid, j); //Unlocks memory locked by the dead process.
             }
-            for (int j=0; j<this.instructionMemory.size();j++){
+            for (int j=0; j<this.instructionMemory.length; j++){
                 this.unlockInstructionMemory(pid, j); //Unlocks memory locked by the dead process.
             }
             StringBuilder sb = new StringBuilder();
@@ -123,10 +130,11 @@ public class Simulator {
                 StringBuilder sb = new StringBuilder();
                 sb.append(clock);
                 sb.append(": ");
-                sb.append("Unlocked process ");
+                sb.append("Unblocked process ");
                 sb.append(pid);
                 this.textLog.add(sb.toString());
                 this.processesList.get(j).ready();
+                this.readyProcesses.add(this.processesList.get(j));
             }
         }
     }
@@ -137,7 +145,7 @@ public class Simulator {
      * @param memAddress 
      */
     public void unlockInstructionMemory(int pid, int memAddress) {
-        if(this.instructionMemory.get(memAddress).unlock(pid)){
+        if(this.instructionMemory[memAddress].unlock(pid)){
             StringBuilder sb = new StringBuilder();
             sb.append(clock);
             sb.append(": ");
@@ -152,8 +160,7 @@ public class Simulator {
      */
     private void fetchInstruction(){
         int instructionAddr = this.readyProcesses.peek().getNextInstruction();
-        InstructionMemory instruction = this.instructionMemory.get(instructionAddr);
-        boolean success = this.cpu.execute(instruction, this.dataMemory,this.ioList);
+        boolean success = this.cpu.execute(instructionAddr, this.instructionMemory[instructionAddr]);
         if (success) {
             this.readyProcesses.peek().incrementPc();
             StringBuilder sb = new StringBuilder();
@@ -172,6 +179,104 @@ public class Simulator {
             this.textLog.add(sb.toString());
             //Punish the process if needed. Busy-waiting otherwise.
         }
+    }
+    
+    /**
+     * Increments the clock and does everything necessary
+     */
+    public void incrementClock(){
+        this.schedule();
+        this.fetchInstruction();
+        this.clock++;
+        this.updateIo();
+    }
+    
+    /**
+     * Returns a process that matches the pid.
+     * @param pid
+     * @return Null if no processes are found. 
+     */
+    public Process getProcess(int pid){
+        for(int i=0; i<this.processesList.size(); i++){
+            if(this.processesList.get(i).getId() == pid){
+                return this.processesList.get(i);
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Schedules readyProcesses.
+     */
+    private void schedule() {
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+    
+    /**
+     * Updates the IO with the new clock and sees if any processes has to be unlocked.
+     */
+    private void updateIo() {
+        for (int j=0; j<this.ioList.size(); j++){
+                Process pid = this.ioList.get(j).decrementTimeLeft();
+                if (pid != null){
+                    this.unblock(pid.getId());
+                }
+        }
+    }
+
+    public DataMemory getData(int operand) {
+        return this.dataMemory.get(operand);
+    }
+
+    /**
+     * Adds a process to wait on an IO channel and blocks it.
+     * @param pid
+     * @param ioChannel 
+     */
+    public void addToIo(int pid, int ioChannel) {
+        this.ioList.get(ioChannel).addProcess(this.getProcess(pid));
+        this.blockProcess(pid);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Process ");
+        sb.append(pid);
+        sb.append(" is waiting on IO ");
+        sb.append(ioChannel);
+        this.addLog(sb.toString());
+    }
+
+    /**
+     * Blocks a process
+     * @param pid 
+     */
+    private void blockProcess(int pid) {
+        for (int j=0; j<this.processesList.size();j++){
+            if (pid == this.processesList.get(j).getId()){
+                StringBuilder sb = new StringBuilder();
+                sb.append(clock);
+                sb.append(": ");
+                sb.append("Blocked process ");
+                sb.append(pid);
+                this.textLog.add(sb.toString());
+                this.processesList.get(j).block();
+                this.readyProcesses.remove(this.processesList.get(j));
+            }
+        }
+    }
+    
+    /**
+     * Prints to log
+     * @param str The string to be printed
+     */
+    public void addLog(String str){
+        StringBuilder sb = new StringBuilder();
+        sb.append(clock);
+        sb.append(": ");
+        sb.append(str);
+        this.textLog.add(sb.toString());
+    }
+
+    void forkProcess(int currentProcessId) {
+        throw new UnsupportedOperationException("Not yet implemented");
     }
     
 }
