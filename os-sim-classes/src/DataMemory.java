@@ -1,19 +1,54 @@
 
+import java.util.LinkedList;
 import java.util.Queue;
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /**
- *
+ * A data memory with lock. To be used in conjunction with the whole simulation package.
  * @author oabahuss
  */
 class DataMemory {
-    Queue<Integer> processQueue;
-    int lockerProcessId;
+    private Queue<Integer> processQueue;
+    private int lockerProcessId;
+    private int authorProcessId;
     
+    /**
+     * A constructor. Initiates everything to zero.
+     */
+    public DataMemory(){
+        this.authorProcessId = 0;
+        this.lockerProcessId = 0;
+        this.processQueue = new LinkedList<>();
+    }
+    
+    /**
+     * Checks if the memory is locked or not.
+     * @return True if it is locked. 
+     */
+    public boolean isLocked(){
+        if (this.lockerProcessId == 0){
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    
+    /**
+     * Locks the memory and sets the lockerProcessId to the param pid.
+     * Adds the pid to a queue if it was locked by a different process.
+     * @param pid The new locker pid.
+     * @return False if it was already locked by a different process.
+     */
+    public boolean lock(int pid){
+        if ((this.lockerProcessId == 0)||(this.lockerProcessId == pid)){
+            this.lockerProcessId = pid;
+            return true;
+        }
+        else {
+            this.processQueue.add(pid);
+            return false;
+        }
+    }
     
     /**
      * Unlocks the memory and returns the next popped pid from the processQueue.
@@ -34,7 +69,39 @@ class DataMemory {
                 return lockerProcessId;
             }
         }
-        
+    }
+    
+    /**
+     * Writes on the memory by the calling process. (sets authorProcessId to pid)
+     * Adds the pid to a queue if it was locked by a different process.
+     * @param pid The new authorProcessId.
+     * @return False if it was already locked by a different process.
+     */
+    public boolean write(int pid){
+        if ((this.lockerProcessId == 0)||(this.lockerProcessId == pid)){
+            this.authorProcessId = pid;
+            return true;
+        }
+        else {
+            this.processQueue.add(pid);
+            return false;
+        }
+    }
+    
+    /**
+     * Reads the memory by the calling process. (sets authorProcessId to pid)
+     * Adds the pid to a queue if it was locked by a different process.
+     * @param pid The reader's pid
+     * @return False if it was already locked by a different process.
+     */
+    public boolean read(int pid){
+        if ((this.lockerProcessId == 0)||(this.lockerProcessId == pid)){
+            return true;
+        }
+        else {
+            this.processQueue.add(pid);
+            return false;
+        }
     }
 }
 

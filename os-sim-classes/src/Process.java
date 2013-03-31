@@ -82,6 +82,10 @@ public class Process {
     public int getParentId() {
         return this.parentId;
     }
+    
+    public int getState(){
+        return this.state;
+    }
 
     public void block() {
         this.state = 2;
