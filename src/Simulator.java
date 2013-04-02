@@ -1,9 +1,11 @@
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
+import java.util.Queue;
 
 /**
- *
+ * An OS simulator!
  * @author oabahuss && fredQin
  */
 public class Simulator {
@@ -18,7 +20,7 @@ public class Simulator {
     //Run-time simulation attributes
     private int clock; // The simulation clock.
     private ArrayList<String> textLog; //what happened in whatever clock step.
-    private PriorityQueue<Process> readyProcesses; //Queue must be sorted for scheduling.
+    private Queue<Process> readyProcesses; //Queue must be sorted for scheduling.
     
     //Run-time simulation param
     private int clockSpeed;
@@ -37,7 +39,7 @@ public class Simulator {
         this.dataMemory  = new ArrayList();
         this.textLog = new ArrayList();
         this.ioList = new ArrayList();
-        this.readyProcesses = new PriorityQueue();
+        this.readyProcesses = new LinkedList<>();
         this.cpu = new CPU(this);
         
         this.instructionMemory = new InstructionMemory[1000];
@@ -59,13 +61,18 @@ public class Simulator {
      * A method that steps the simulation clock up to the parameter clock.
      * @param clock the time you want to jump the simulation to.
      */
-    private void jumpClock(int clock) {
+    public void jumpClock(int clock) {
         int i = clock;
-        while(i>=0){
+        while(i>0){
             this.incrementClock();
+            i--;
         }
     }
-
+    
+    public Object[] getLog(){
+        return textLog.toArray();
+    }
+    
     /**
      * Kills a specified process, and its children *evil laugh*.
      * AND TRACK DEM DOWN!
@@ -159,25 +166,34 @@ public class Simulator {
      * Fetches the next instruction and updates PC if it was successful.
      */
     private void fetchInstruction(){
-        int instructionAddr = this.readyProcesses.peek().getNextInstruction();
-        boolean success = this.cpu.execute(instructionAddr, this.instructionMemory[instructionAddr]);
-        if (success) {
-            this.readyProcesses.peek().incrementPc();
+        if (this.readyProcesses.peek() == null){
             StringBuilder sb = new StringBuilder();
-            sb.append(clock);
-            sb.append(": ");
-            sb.append("Successfully executed instruction memory #");
-            sb.append(instructionAddr);
-            this.textLog.add(sb.toString());
+            sb.append("No processes to run...");
+            this.addLog(sb.toString());
         }
         else {
-            StringBuilder sb = new StringBuilder();
-            sb.append(clock);
-            sb.append(": ");
-            sb.append("Failed executing instruction memory #");
-            sb.append(instructionAddr);
-            this.textLog.add(sb.toString());
-            //Punish the process if needed. Busy-waiting otherwise.
+            int instructionAddr = this.readyProcesses.peek().getNextInstruction();
+            boolean success = this.cpu.execute(instructionAddr, this.instructionMemory[instructionAddr]);
+            if (success) {
+                this.readyProcesses.peek().incrementPc();
+                StringBuilder sb = new StringBuilder();
+                sb.append(clock);
+                sb.append(": ");
+                sb.append("Successfully executed instruction memory #");
+                sb.append(instructionAddr);
+                sb.append(" for process ");
+                sb.append(this.readyProcesses.peek().getId());                       
+                this.textLog.add(sb.toString());
+            }
+            else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(clock);
+                sb.append(": ");
+                sb.append("Failed executing instruction memory #");
+                sb.append(instructionAddr);
+                this.textLog.add(sb.toString());
+                //Punish the process if needed. Busy-waiting otherwise.
+            }
         }
     }
     
@@ -207,9 +223,10 @@ public class Simulator {
     
     /**
      * Schedules readyProcesses.
+     * Not implemented yet.
      */
     private void schedule() {
-        throw new UnsupportedOperationException("Not yet implemented");
+        this.readyProcesses.add(this.readyProcesses.poll()); //RR express :P
     }
     
     /**
@@ -264,7 +281,7 @@ public class Simulator {
     }
     
     /**
-     * Prints to log
+     * Prints to log prefixed by a timestamp of the simulator's clock.
      * @param str The string to be printed
      */
     public void addLog(String str){
@@ -275,8 +292,113 @@ public class Simulator {
         this.textLog.add(sb.toString());
     }
 
-    void forkProcess(int currentProcessId) {
-        throw new UnsupportedOperationException("Not yet implemented");
+    /**
+     * Creates a child process and adds it to the simulation.
+     * TODO: Forking doesn't work yet.
+     * @param pid The parent's process ID. 
+     */
+    public void forkProcess(int pid) {
+        Process parent = this.getProcess(pid);
+        Process child = new Process(parent);
+        this.addProcess(child, null);
+    }
+    
+    /**
+     * Adds a new process to the list of processes, and allocates memory for it.
+     * Faulty...
+     * @param newProcess The new process.
+     * @param instructions The process instructions.
+     * @return true if the process was added successfully.
+     */
+    public boolean addProcess(Process newProcess, InstructionMemory[] instructions){
+        if (newProcess.getParentId() == 0){ //Case its an orphan process
+            if (instructions.length != newProcess.getLength()){
+                return false;
+            }
+            
+            int startingAddress = this.findMemory(newProcess.getLength());
+            StringBuilder sb1 = new StringBuilder();
+            sb1.append("Attempting to add a new process of length ");
+            sb1.append(newProcess.getLength());
+            sb1.append(". Total processes count is ");
+            sb1.append(this.processesList.size());
+            this.addLog(sb1.toString());
+            if (startingAddress == -1){
+                StringBuilder sb = new StringBuilder();
+                sb.append("Out of memory; failed adding a new process");
+                this.addLog(sb.toString());
+                return false;
+            }
+            int pid = this.findId();
+            newProcess.setId(pid);
+            newProcess.setStartingAddress(startingAddress);
+            
+            this.readyProcesses.add(newProcess);
+            this.processesList.add(newProcess);
+
+            for (int i=0; i<instructions.length; i++){
+                this.instructionMemory[i+startingAddress] = instructions[i];
+                this.instructionMemory[i+startingAddress].setOwner(pid);
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append("Added new process ");
+            sb.append(pid);
+            sb.append(" with starting address at ");
+            sb.append(startingAddress);
+            this.addLog(sb.toString());
+            return true;
+        }
+        else { //This is just a child of another process. Feel free to squeeze its cheeks. 
+            int pid = this.findId();
+            newProcess.setId(pid);
+            StringBuilder sb = new StringBuilder();
+            sb.append("Added new child process ");
+            sb.append(pid);
+            sb.append(" from parent ");
+            sb.append(newProcess.getParentId());
+            this.addLog(sb.toString());
+            return true;
+        }
+    }
+    
+    /**
+     * Finds the starting address of a memory gap that fits a desired length.
+     * A naive algorithm that I think runs in O(n).
+     * @param length The required gap length.
+     * @return The starting address of the memory gap. -1 If none found.
+     */
+    private int findMemory(int length){
+        int count = 0;
+        for (int i = 0; i<this.instructionMemory.length; i++){
+            if (this.instructionMemory[i].isEmpty()){
+                count++;
+                
+                if (count == length) {
+                    return i-count+1;
+                } //Success! Return the address of the first step.
+            }
+            else {
+                count = 0; //reset...
+            }
+        }
+        return -1; //Failed.
+    }
+
+    /**
+     * Finds an pid that is currently not in use by another process.
+     * @return the PID.
+     */
+    private int findId() {
+        int pid = 1;
+        while (true){
+            if (this.getProcess(pid) == null){
+                return pid;
+            }
+            else {
+                pid++;
+            }
+        }
     }
     
 }

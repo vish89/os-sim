@@ -11,14 +11,35 @@ public class Process {
     private int parentId;
     private int pc; 
     
+    
+    /**
+     * A constructor for a brand new process. State begins at 1, and pc = 0. 
+     * id is null, and startingAddress is null. To be set later by simulator.
+     * @param id
+     * @param priority
+     * @param startingAddress Memory starting address.
+     * @param length 
+     */
+    public Process(int priority, int length){
+        this.id = 0;
+        this.priority = priority;
+        this.state = state;
+        this.startingAddress = 0;
+        this.length = length;
+        this.parentId = 0;
+        this.state = 1;
+        this.pc = 0;
+    }
+    
     /**
      * A constructor for a brand new process. State begins at 1, and pc = 0.
      * @param id
      * @param priority
      * @param startingAddress Memory starting address.
      * @param length 
+     * @deprecated 
      */
-    public void Process(int id, int priority, int startingAddress, int length){
+    public Process(int id, int priority, int startingAddress, int length){
         this.id = id;
         this.priority = priority;
         this.state = state;
@@ -30,11 +51,10 @@ public class Process {
     }
     
     /**
-     * Creates a copy of the parent, with different id.
+     * Creates a copy of the parent, id = null.
      * @param parent The creating parent process.
-     * @param id The child's id, assigned by simulator.
      */
-    public void Process(Process parent, int id){
+    public Process(Process parent){
         this.priority = parent.getPriority();
         this.parentId = parent.getId();
         this.startingAddress = parent.getStartingAddress();
@@ -42,7 +62,7 @@ public class Process {
         this.pc = parent.getPc();
         
         
-        this.id = id;
+        this.id = 0;
         this.state = 1;
     }
     
@@ -97,5 +117,13 @@ public class Process {
     
     public void run() {
         this.state = 3;
+    }
+    
+    public void setStartingAddress(int newAddress){
+        this.startingAddress = newAddress;
+    }
+    
+    public void setId(int newId){
+        this.id = newId;
     }
 }

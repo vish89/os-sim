@@ -12,7 +12,7 @@ public class InstructionMemory {
      * A constructor. Use setMemory to set it up.
      */
     public InstructionMemory(){
-        this.instruction = 0;
+        this.instruction = 1;
         this.operand = 0;
         this.ownerPid = 0;
     }
@@ -31,6 +31,9 @@ public class InstructionMemory {
         }
     }
     
+    public void setOwner(int pid){
+        this.ownerPid = pid;
+    }
     /**
      * Returns the current instruction in the memory.
      * @return 0 for an empty instruction.

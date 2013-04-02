@@ -128,7 +128,7 @@ class CPU {
     }
 
     /**
-     * Tells the simulator to fork a process.
+     * Tells the simulator to fork a process. 
      * @return True.
      */
     private boolean fork() {
