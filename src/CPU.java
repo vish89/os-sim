@@ -130,6 +130,7 @@ class CPU {
     /**
      * Tells the simulator to fork a process. 
      * @return True.
+     * @deprecated 
      */
     private boolean fork() {
         this.simulator.forkProcess(this.currentProcessId);

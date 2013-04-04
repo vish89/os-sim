@@ -27,7 +27,7 @@ class IOChannel {
      * @param pid 
      */
     public void addProcess(Process pid){
-        if (!(this.processQueue.isEmpty())){
+        if (this.processQueue.isEmpty()){
                 this.timeLeft = this.delay;
         }
         this.processQueue.add(pid);

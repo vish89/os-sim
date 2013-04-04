@@ -12,7 +12,7 @@ public class Simulator {
     //Fixed params during simulation
     private ArrayList<Process> processesList;
     private InstructionMemory[] instructionMemory;
-    private ArrayList<IOChannel> ioList;
+    private IOChannel[] ioList;
     private ArrayList<DataMemory> dataMemory;
     private CPU cpu;
     private int schedulingPolicy;
@@ -38,7 +38,6 @@ public class Simulator {
         this.processesList = new ArrayList();
         this.dataMemory  = new ArrayList();
         this.textLog = new ArrayList();
-        this.ioList = new ArrayList();
         this.readyProcesses = new LinkedList<>();
         this.cpu = new CPU(this);
         
@@ -47,10 +46,15 @@ public class Simulator {
             this.instructionMemory[i] = new InstructionMemory();
         }
         
+        this.ioList = new IOChannel[4];
+        for (int i=0; i<4; i++){
+            this.ioList[i] = new IOChannel(3); //Default delay is 1
+        }
+        
         StringBuilder sb = new StringBuilder();
         sb.append(0);
         sb.append(": ");
-        sb.append("Starting simulation...");
+        sb.append("Starting simulation(4 IO channels, 4 Data memories, 1000 Instruction memories)...");
         this.textLog.add(sb.toString());
         
         this.jumpClock(clock);
@@ -75,7 +79,6 @@ public class Simulator {
     
     /**
      * Kills a specified process, and its children *evil laugh*.
-     * AND TRACK DEM DOWN!
      * @param processId The process ID of the process to be killed
      */
     public void killProcess(int processId){
@@ -88,7 +91,7 @@ public class Simulator {
             }
         }
         
-        //TRACK DEM DOWN!
+        
         for(int i=0;i<processesKilled.size();i++){
             int pid = processesKilled.get(i);
             for (int j=0; j<this.dataMemory.size();j++){
@@ -173,16 +176,18 @@ public class Simulator {
         }
         else {
             int instructionAddr = this.readyProcesses.peek().getNextInstruction();
+            int pid = this.readyProcesses.peek().getId();
+            this.addLog("Executing instruction memory #"+ instructionAddr + " for process "+ pid);
             boolean success = this.cpu.execute(instructionAddr, this.instructionMemory[instructionAddr]);
             if (success) {
-                this.readyProcesses.peek().incrementPc();
+                this.getProcess(pid).incrementPc();
                 StringBuilder sb = new StringBuilder();
                 sb.append(clock);
                 sb.append(": ");
                 sb.append("Successfully executed instruction memory #");
                 sb.append(instructionAddr);
                 sb.append(" for process ");
-                sb.append(this.readyProcesses.peek().getId());                       
+                sb.append(pid);                       
                 this.textLog.add(sb.toString());
             }
             else {
@@ -226,15 +231,15 @@ public class Simulator {
      * Not implemented yet.
      */
     private void schedule() {
-        this.readyProcesses.add(this.readyProcesses.poll()); //RR express :P
+        this.readyProcesses.add(this.readyProcesses.poll()); //RR express
     }
     
     /**
      * Updates the IO with the new clock and sees if any processes has to be unlocked.
      */
     private void updateIo() {
-        for (int j=0; j<this.ioList.size(); j++){
-                Process pid = this.ioList.get(j).decrementTimeLeft();
+        for (int j=0; j<this.ioList.length; j++){
+                Process pid = this.ioList[j].decrementTimeLeft();
                 if (pid != null){
                     this.unblock(pid.getId());
                 }
@@ -251,7 +256,7 @@ public class Simulator {
      * @param ioChannel 
      */
     public void addToIo(int pid, int ioChannel) {
-        this.ioList.get(ioChannel).addProcess(this.getProcess(pid));
+        this.ioList[ioChannel].addProcess(this.getProcess(pid));
         this.blockProcess(pid);
         StringBuilder sb = new StringBuilder();
         sb.append("Process ");
@@ -296,6 +301,7 @@ public class Simulator {
      * Creates a child process and adds it to the simulation.
      * TODO: Forking doesn't work yet.
      * @param pid The parent's process ID. 
+     * @deprecated 
      */
     public void forkProcess(int pid) {
         Process parent = this.getProcess(pid);
@@ -399,6 +405,10 @@ public class Simulator {
                 pid++;
             }
         }
+    }
+    
+    public InstructionMemory[] getInstructionMemory(){
+        return this.instructionMemory;
     }
     
 }
