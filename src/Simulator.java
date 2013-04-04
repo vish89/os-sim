@@ -13,7 +13,7 @@ public class Simulator {
     private ArrayList<Process> processesList;
     private InstructionMemory[] instructionMemory;
     private IOChannel[] ioList;
-    private ArrayList<DataMemory> dataMemory;
+    private DataMemory[] dataMemory;
     private CPU cpu;
     private int schedulingPolicy;
     
@@ -31,12 +31,11 @@ public class Simulator {
      * @param clock The current clock at which the simulation begins at.
      * @param schedulingPolicy The chosen scheduling policy (FIFO,RR,...) TODO.
      */
-    public Simulator(int clockSpeed, int clock, int schedulingPolicy){
+       Simulator(int clockSpeed, int clock, int schedulingPolicy){
         this.clock = clock;
         this.clockSpeed = clockSpeed;
         this.schedulingPolicy = schedulingPolicy;
         this.processesList = new ArrayList();
-        this.dataMemory  = new ArrayList();
         this.textLog = new ArrayList();
         this.readyProcesses = new LinkedList<>();
         this.cpu = new CPU(this);
@@ -51,10 +50,15 @@ public class Simulator {
             this.ioList[i] = new IOChannel(3); //Default delay is 1
         }
         
+        this.dataMemory  = new DataMemory[8];
+        for (int i=0; i<4; i++){
+            this.dataMemory[i] = new DataMemory(); //Default delay is 1
+        }
+        
         StringBuilder sb = new StringBuilder();
         sb.append(0);
         sb.append(": ");
-        sb.append("Starting simulation(4 IO channels, 4 Data memories, 1000 Instruction memories)...");
+        sb.append("Starting simulation(4 IO channels, 8 Data memories, 1000 Instruction memories)...");
         this.textLog.add(sb.toString());
         
         this.jumpClock(clock);
@@ -94,7 +98,7 @@ public class Simulator {
         
         for(int i=0;i<processesKilled.size();i++){
             int pid = processesKilled.get(i);
-            for (int j=0; j<this.dataMemory.size();j++){
+            for (int j=0; j<this.dataMemory.length;j++){
                 this.unlockDataMemory(pid, j); //Unlocks memory locked by the dead process.
             }
             for (int j=0; j<this.instructionMemory.length; j++){
@@ -117,7 +121,7 @@ public class Simulator {
      */
     public void unlockDataMemory(int pid, int memAddress){
         int next;
-        next = this.dataMemory.get(memAddress).unlock(pid);
+        next = this.dataMemory[memAddress].unlock(pid);
         if (next > 0){
             StringBuilder sb = new StringBuilder();
             sb.append(clock);
@@ -247,7 +251,7 @@ public class Simulator {
     }
 
     public DataMemory getData(int operand) {
-        return this.dataMemory.get(operand);
+        return this.dataMemory[operand];
     }
 
     /**
